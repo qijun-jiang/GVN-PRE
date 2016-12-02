@@ -1,3 +1,4 @@
+//PRE test gitignore
 //#define DEBUG_TYPE "gvn"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ADT/DenseMap.h"
