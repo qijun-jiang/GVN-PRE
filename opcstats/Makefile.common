@@ -10,10 +10,10 @@ LLVM_SRC_ROOT = /opt/llvm-source
 LLVM_OBJ_ROOT = /opt/llvm
 
 # Set the directory root of this project's source files
-PROJ_SRC_ROOT := $(subst //,/,/home/qijun/opcstats)
+PROJ_SRC_ROOT := $(subst //,/,/home/qijun/GVN-PRE/opcstats)
 
 # Set the root directory of this project's object files
-PROJ_OBJ_ROOT := $(subst //,/,/home/qijun/opcstats)
+PROJ_OBJ_ROOT := $(subst //,/,/home/qijun/GVN-PRE/opcstats)
 
 # Set the root directory of this project's install prefix
 PROJ_INSTALL_ROOT := /usr/local
@@ -23,4 +23,3 @@ include $(PROJ_OBJ_ROOT)/Makefile.llvm.config
 
 # Include all of the build rules used for making LLVM
 include $(PROJ_SRC_ROOT)/Makefile.llvm.rules
-
