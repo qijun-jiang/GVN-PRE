@@ -1,4 +1,7 @@
-opcstats/Makefile
+opcstats/Makefile.common
+opcstats/Makefile.llvm.config
+opcstats/config.log
+opcstats/config.status
 
 opcstats/Makefile.*
 opcstats/tools/
