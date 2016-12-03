@@ -72,6 +72,13 @@ namespace {
     std::vector<bool> NAVAL, XAVAL;
     std::vector<bool> NPANT, XPANT;
     
+    // graph
+    int virtual_source, virtual_sink;
+    vector< map<int, double> > reduced_graph;
+    
+    // min-cut
+    vector< pair<int, int> > cut_edges;    
+    
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
     void getAnalysisUsage(AnalysisUsage &AU) const {
