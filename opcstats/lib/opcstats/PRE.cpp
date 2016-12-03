@@ -55,7 +55,7 @@ namespace {
       AU.addRequired<ProfileInfo>();
     }
     
-    int checkBBType(BasicBlock* B, Instruction I);
+    int checkBBType(BasicBlock* B, Instruction *I);
   };
 }
 
@@ -65,7 +65,7 @@ bool mcpre::runOnFunction(Function &F) {
   return true;
 }
 
-int mcpre::checkBBType(BasicBlock* B, Instruction I) {
+int mcpre::checkBBType(BasicBlock* B, Instruction *I) {
   return 0;
 }
 
