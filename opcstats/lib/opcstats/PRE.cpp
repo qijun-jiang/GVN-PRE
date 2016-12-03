@@ -54,6 +54,8 @@ namespace {
     void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<ProfileInfo>();
     }
+    
+    int checkBBType(BasicBlock* B, Instruction I);
   };
 }
 
@@ -61,6 +63,10 @@ bool mcpre::runOnFunction(Function &F) {
   PI = &getAnalysis<ProfileInfo>();
   errs() <<"kaka\n";
   return true;
+}
+
+int mcpre::checkBBType(BasicBlock* B, Instruction I) {
+  return 0;
 }
 
 char mcpre::ID = 0;
