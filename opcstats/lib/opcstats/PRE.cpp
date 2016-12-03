@@ -108,13 +108,7 @@ bool mcpre::runOnFunction(Function &F) {
         }
    }
   
-  // init block attributes
-  COMP.resize(F.size(), false);
-  TRANSP.resize(F.size(), false);
-  NAVAL.resize(F.size(), false);
-  XAVAL.resize(F.size(), false);
-  NPANT.resize(F.size(), false);
-  XPANT.resize(F.size(), false);
+  
   
   // run mc-pre on target expressions
   for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end(); e++){
@@ -134,7 +128,15 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
 }
 
 void mcpre::splitOnModiOrComp() {}
-void mcpre::part1() {}
+void mcpre::part1() {
+  // init block attributes
+  COMP.resize(F.size(), false);
+  TRANSP.resize(F.size(), false);
+  NAVAL.resize(F.size(), false);
+  XAVAL.resize(F.size(), false);
+  NPANT.resize(F.size(), false);
+  XPANT.resize(F.size(), false);
+}
 void mcpre::part2() {}
 void mcpre::part3() {}
 void mcpre::part4() {}
