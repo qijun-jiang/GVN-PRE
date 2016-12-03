@@ -55,7 +55,8 @@ namespace {
       AU.addRequired<ProfileInfo>();
     }
     
-    int checkBBType(BasicBlock *B, Instruction *I);
+    int checkBBType(BasicBlock *B, Instruction *Expr);
+    bool checkModification(BasicBlock *B, Instruction *Expr);
     bool checkComputation(Instruction *I, Instruction *Expr);
   };
 }
@@ -66,8 +67,14 @@ bool mcpre::runOnFunction(Function &F) {
   return true;
 }
 
-int mcpre::checkBBType(BasicBlock *B, Instruction *I) {
-  return 0;
+char mcpre::checkBBType(BasicBlock *B, Instruction *Expr) {
+  if (checkModification(B, Expr) return 'M';
+  
+  for (auto i = B->begin(); i != B->end(); i++) {
+    if (checkComputation(i, Expr)) return 'C';
+  }
+  
+  return 'T';
 }
 
 bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
@@ -84,6 +91,17 @@ bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
   return false; 
 }
 
+bool mcpre::checkModification(BasicBlock *B, Instruction *Expr) {
+  for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
+    if (Instruction *I = dyn_cast<Instruction>(Expr->getOperand(i))) {
+      if (I->getParent() == B)  // Operand is defined in this block!
+        return true;
+    }
+  }
+  return false;
+}
+        
+        
 char mcpre::ID = 0;
 static RegisterPass<mcpre> X("mcpre", "min-cut pre", false, false);
 
