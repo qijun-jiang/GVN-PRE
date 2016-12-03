@@ -50,15 +50,19 @@ namespace {
     static char ID;
     ProfileInfo* PI;
     mcpre() : FunctionPass(ID) { }
-    virtual bool runOnFunction(Function &F) {
-      PI = &getAnalysis<ProfileInfo>();
-      errs() <<"kaka\n";
-    }
+    virtual bool runOnFunction(Function &F);
     void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<ProfileInfo>();
     }
   };
 }
+
+bool mcpre::runOnFunction(Function &F) {
+  PI = &getAnalysis<ProfileInfo>();
+  errs() <<"kaka\n";
+  return true;
+}
+
 char mcpre::ID = 0;
 static RegisterPass<mcpre> X("mcpre", "min-cut pre", false, false);
 
