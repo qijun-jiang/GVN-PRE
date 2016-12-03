@@ -95,6 +95,7 @@ char mcpre::checkBBType(BasicBlock *B, Instruction *Expr) {
 
 bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
   if (I->getNumOperands() != 2) return false;
+  if (I->getOpcode() != Expr->getOpcode()) return false;
   
   Instruction *ExprOp1 = dyn_cast<Instruction>(Expr->getOperand(0));
   Instruction *ExprOp2 = dyn_cast<Instruction>(Expr->getOperand(1));
