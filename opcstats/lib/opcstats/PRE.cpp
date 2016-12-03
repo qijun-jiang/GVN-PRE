@@ -130,12 +130,13 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
 void mcpre::splitOnModiOrComp() {}
 void mcpre::part1() {
   // init block attributes
-  COMP.resize(F.size(), false);
-  TRANSP.resize(F.size(), false);
-  NAVAL.resize(F.size(), false);
-  XAVAL.resize(F.size(), false);
-  NPANT.resize(F.size(), false);
-  XPANT.resize(F.size(), false);
+  int FSize = Func->size();
+  COMP.resize(FSize, false);
+  TRANSP.resize(FSize, false);
+  NAVAL.resize(FSize, false);
+  XAVAL.resize(FSize, false);
+  NPANT.resize(FSize, false);
+  XPANT.resize(FSize, false);
 }
 void mcpre::part2() {}
 void mcpre::part3() {}
