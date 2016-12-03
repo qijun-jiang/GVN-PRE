@@ -43,7 +43,9 @@
 
 #include <vector>
 #include <map>
+#include <set>
 
+using namespace std;
 using namespace llvm;
 using namespace PatternMatch;
 
@@ -52,10 +54,17 @@ namespace {
   struct mcpre: public FunctionPass {
     static char ID;
     ProfileInfo* PI;
-    
-    // block mapping
+    Function *Func;
+
+    // Block information - Map basic blocks in a function back and forth to
+    // unsigned integers.
     std::vector<BasicBlock*> BlockMapping;
-    std::map<BasicBlock*, unsigned> BlockNumbering;
+    map<BasicBlock*, unsigned> BlockNumbering;
+
+    // ProcessedExpressions - Keep track of which expressions have already been
+    // processed.
+    set<Instruction*> ProcessedExpressions;
+    set<Instruction*> TargetExpressions;
     
     // block attributes
     std::vector<bool> COMP;
@@ -69,6 +78,12 @@ namespace {
       AU.addRequired<ProfileInfo>();
     }
     
+    bool ProcessExpression(Instruction *Expr);
+    void splitOnModiOrComp();
+    void part1();
+    void part2();
+    void part3();
+    void part4();
     char checkBBType(BasicBlock *B, Instruction *Expr);
     bool checkModification(BasicBlock *B, Instruction *Expr);
     bool checkComputation(Instruction *I, Instruction *Expr);
@@ -76,40 +91,54 @@ namespace {
 }
 
 bool mcpre::runOnFunction(Function &F) {
+  // It's a pointer
+  Func = &F;
   PI = &getAnalysis<ProfileInfo>();
   errs() <<"kaka\n";
   
-  // BlockMapping
-  ReversePostOrderTraversal<Function*> RPOT(&F);
-  for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin(); I != RPOT.end(); I++) {
-    BasicBlock *BB = *I;
-    BlockNumbering[BB] = BlockMapping.size();
-    BlockMapping.push_back(BB);
-  }
+  // filter target expressions
+   for (Function::iterator b = F.begin(); b != F.end(); b++) {
+        for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+           if (i->getOpcode() == Instruction::Add
+             || i->getOpcode() == Instruction::Mul) {
+             // filter add, multi first
+             // TODO: filter sub, div
+             TargetExpressions.insert(&(*i));
+           }
+        }
+   }
   
   // init block attributes
   COMP.resize(F.size(), false);
   TRANSP.resize(F.size(), false);
-  NAVAL.resize(F.size(), true);
-  XAVAL.resize(F.size(), true);
+  NAVAL.resize(F.size(), false);
+  XAVAL.resize(F.size(), false);
   NPANT.resize(F.size(), false);
   XPANT.resize(F.size(), false);
   
-  // run forward availability analysis
-  // runForwardAnalysis(F); 
-//   NAVAL[0] = false;
-//   XAVAL[0] = false;
-//   for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin() + 1; I != RPOT.end(); I++) {
-//     BasicBlock *BB = *I;
-//     unsigned id = BlockNumbering[BB];
-    
-//     for (pred_iterator PI = pred_begin(BB); PI != pred_end(BB); PT++) {
-//       NAVAL[id] &= XAVAL[BlockNumbering[*PI]];
-//     }
-//   }
+  // run mc-pre on target expressions
+  for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end(); e++){
+    ProcessExpression(*e);
+  }
   
   return true;
 }
+
+bool mcpre::ProcessExpression(Instruction *Expr) {
+  splitOnModiOrComp();
+  part1();
+  part2();
+  part3();
+  part4();
+  return true;
+}
+
+void mcpre::splitOnModiOrComp() {}
+void mcpre::part1() {}
+void mcpre::part2() {}
+void mcpre::part3() {}
+void mcpre::part4() {}
+
 
 char mcpre::checkBBType(BasicBlock *B, Instruction *Expr) {
   if (checkModification(B, Expr)) return 'M';
