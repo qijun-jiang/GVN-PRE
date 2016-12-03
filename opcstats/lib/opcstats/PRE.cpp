@@ -41,6 +41,9 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Pass.h"
 
+#include <vector>
+#include <unordered_map>
+
 using namespace llvm;
 using namespace PatternMatch;
 
@@ -49,6 +52,10 @@ namespace {
   struct mcpre: public FunctionPass {
     static char ID;
     ProfileInfo* PI;
+    
+    vector<BasicBlock*> BlockMapping;
+    unordered_map<BasicBlock*, unsigned> BlockNumbering;
+    
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
     void getAnalysisUsage(AnalysisUsage &AU) const {
@@ -64,6 +71,15 @@ namespace {
 bool mcpre::runOnFunction(Function &F) {
   PI = &getAnalysis<ProfileInfo>();
   errs() <<"kaka\n";
+  
+  // BlockMapping
+  ReversePostOrderTraversal<Function*> RPOT(&F);
+  for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin(); I != RPOT.end(); I++) {
+    BasicBlock *BB = *I;
+    BlockNumbering[BB] == BlockMapping.size();
+    BlockMapping.push_back(BB);
+  }
+
   return true;
 }
 
