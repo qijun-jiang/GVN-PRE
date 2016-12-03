@@ -76,7 +76,7 @@ bool mcpre::runOnFunction(Function &F) {
   ReversePostOrderTraversal<Function*> RPOT(&F);
   for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin(); I != RPOT.end(); I++) {
     BasicBlock *BB = *I;
-    BlockNumbering[BB] == BlockMapping.size();
+    BlockNumbering[BB] = BlockMapping.size();
     BlockMapping.push_back(BB);
   }
 
