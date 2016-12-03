@@ -55,7 +55,7 @@ namespace {
       AU.addRequired<ProfileInfo>();
     }
     
-    int checkBBType(BasicBlock *B, Instruction *Expr);
+    char checkBBType(BasicBlock *B, Instruction *Expr);
     bool checkModification(BasicBlock *B, Instruction *Expr);
     bool checkComputation(Instruction *I, Instruction *Expr);
   };
