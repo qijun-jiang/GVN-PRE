@@ -54,7 +54,7 @@ namespace {
     ProfileInfo* PI;
     
     std::vector<BasicBlock*> BlockMapping;
-    map<BasicBlock*, unsigned> BlockNumbering;
+    std::map<BasicBlock*, unsigned> BlockNumbering;
     
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
