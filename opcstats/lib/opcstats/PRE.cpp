@@ -90,10 +90,23 @@ bool mcpre::runOnFunction(Function &F) {
   // init block attributes
   COMP.resize(F.size(), false);
   TRANSP.resize(F.size(), false);
-  NAVAL.resize(F.size(), false);
-  XAVAL.resize(F.size(), false);
+  NAVAL.resize(F.size(), true);
+  XAVAL.resize(F.size(), true);
   NPANT.resize(F.size(), false);
   XPANT.resize(F.size(), false);
+  
+  // run forward availability analysis
+  // runForwardAnalysis(F); 
+  NAVAL[0] = false;
+  XAVAL[0] = false;
+  for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin() + 1; I != RPOT.end(); I++) {
+    BasicBlock *BB = *I;
+    unsigned id = BlockNumbering[BB];
+    
+    for (pred_iterator PI = pred_begin(BB); PI != pred_end(BB); PT++) {
+      NAVAL[id] &= XAVAL[BlockNumbering[*PI]];
+    }
+  }
   
   return true;
 }
