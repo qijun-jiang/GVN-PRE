@@ -42,11 +42,10 @@
 #include "llvm/Pass.h"
 
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 using namespace llvm;
 using namespace PatternMatch;
-using namespace std;
 
 namespace {
   const double biasPercentage = 0.8;
@@ -54,8 +53,8 @@ namespace {
     static char ID;
     ProfileInfo* PI;
     
-    vector<BasicBlock*> BlockMapping;
-    unordered_map<BasicBlock*, unsigned> BlockNumbering;
+    std::vector<BasicBlock*> BlockMapping;
+    map<BasicBlock*, unsigned> BlockNumbering;
     
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
