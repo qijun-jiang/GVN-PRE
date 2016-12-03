@@ -53,8 +53,15 @@ namespace {
     static char ID;
     ProfileInfo* PI;
     
+    // block mapping
     std::vector<BasicBlock*> BlockMapping;
     std::map<BasicBlock*, unsigned> BlockNumbering;
+    
+    // block attributes
+    std::vector<bool> COMP;
+    std::vector<bool> TRANSP;
+    std::vector<bool> NAVAL, XAVAL;
+    std::vector<bool> NPANT, XPANT;
     
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
@@ -79,6 +86,9 @@ bool mcpre::runOnFunction(Function &F) {
     BlockNumbering[BB] = BlockMapping.size();
     BlockMapping.push_back(BB);
   }
+  
+  // init block attributes
+  COMP.resize(F.size(), false);
 
   return true;
 }
