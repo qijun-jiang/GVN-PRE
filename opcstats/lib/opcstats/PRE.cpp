@@ -89,7 +89,12 @@ bool mcpre::runOnFunction(Function &F) {
   
   // init block attributes
   COMP.resize(F.size(), false);
-
+  TRANSP.resize(F.size(), false);
+  NAVAL.resize(F.size(), false);
+  XAVAL.resize(F.size(), false);
+  NPANT.resize(F.size(), false);
+  XPANT.resize(F.size(), false);
+  
   return true;
 }
 
