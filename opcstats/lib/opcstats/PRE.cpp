@@ -46,6 +46,7 @@
 
 using namespace llvm;
 using namespace PatternMatch;
+using namespace std;
 
 namespace {
   const double biasPercentage = 0.8;
@@ -53,8 +54,8 @@ namespace {
     static char ID;
     ProfileInfo* PI;
     
-    std::vector<BasicBlock*> BlockMapping;
-    std::unordered_map<BasicBlock*, unsigned> BlockNumbering;
+    vector<BasicBlock*> BlockMapping;
+    unordered_map<BasicBlock*, unsigned> BlockNumbering;
     
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
