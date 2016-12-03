@@ -68,7 +68,7 @@ bool mcpre::runOnFunction(Function &F) {
 }
 
 char mcpre::checkBBType(BasicBlock *B, Instruction *Expr) {
-  if (checkModification(B, Expr) return 'M';
+  if (checkModification(B, Expr)) return 'M';
   
   for (auto i = B->begin(); i != B->end(); i++) {
     if (checkComputation(i, Expr)) return 'C';
