@@ -148,12 +148,12 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
              << BB->size() << " instructions.\n";
   int split_flag = -1;
   // filter target expressions
-  for (BasicBlock::iterator i = BB->begin(); i != BB->end(); i++) {
+  for (BasicBlock::iterator I = BB->begin(); I != BB->end(); I++) {
     // use break after split to jump!
     int new_flag;
-    if (checkComputation(i, current_exp)) {
+    if (checkComputation(I, current_exp)) {
       new_flag = 1;
-    } else if (checkModifyOprand(i, current_exp)) {
+    } else if (checkModifyOprand(I, current_exp)) {
       new_flag = 2;
     } else {
       continue;
@@ -166,16 +166,20 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
 
     // both modi and comp, split
     if (split_flag != new_flag) {
+      errs()<<"split:"<< BB->getName() <<" at "<< *I <<'\n';
       // store child edge weight
       const std::vector<DomTreeNode*> &Children = N->getChildren();
-      for (unsigned i = 0, e = Children.size(); i != e; ++i) {
-        BasicBlock *child = Children[i]->getBlock();
+      errs()<< "has "<< Children.size()<<" children\n";
+      for (unsigned k = 0, e = Children.size(); k != e; ++k) {
+        BasicBlock *child = Children[k]->getBlock();
         ProfileInfo::Edge E = PI->getEdge(BB, child);
         edge_to_child[child] = PI->getEdgeWeight(E);
+        errs()<< E <<":"<< edge_to_child[child]<<'\n';
       }
+      errs()<<"restore: and has exc count" << (int)PI->getExecutionCount(BB) <<'\n';
       
       // split
-      BasicBlock *RestBB = SplitBlock(BB, i, this);
+      BasicBlock *RestBB = SplitBlock(BB, I, this);
       
       // set edge to rest block
       ProfileInfo::Edge E = PI->getEdge(BB, RestBB);
@@ -184,11 +188,14 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
       // restore child edge
       BB = RestBB;
       N = N->getChildren()[0];
-      for (unsigned i = 0, e = Children.size(); i != e; ++i) {
-        BasicBlock *child = Children[i]->getBlock();
+      const std::vector<DomTreeNode*> &NewChildren = N->getChildren();
+      for (unsigned k = 0, e = NewChildren.size(); k != e; ++k) {
+        BasicBlock *child = NewChildren[k]->getBlock();
         ProfileInfo::Edge E = PI->getEdge(BB, child);
         PI->setEdgeWeight(E, edge_to_child[child]);
+        errs()<< E <<":"<< edge_to_child[child]<<'\n';
       }
+      errs()<<'\n';
       break;
     }
   }
