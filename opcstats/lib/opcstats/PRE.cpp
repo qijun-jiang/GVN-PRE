@@ -55,6 +55,7 @@ namespace {
     static char ID;
     ProfileInfo* PI;
     Function *Func;
+    Instruction *current_exp;
 
     // Block information - Map basic blocks in a function back and forth to
     // unsigned integers.
@@ -126,6 +127,7 @@ bool mcpre::runOnFunction(Function &F) {
 }
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
+  current_exp = Expr;
   splitOnModiOrComp();
   part1();
   part2();
@@ -134,7 +136,10 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
   return true;
 }
 
-void mcpre::splitOnModiOrComp() {}
+void mcpre::splitOnModiOrComp() {
+
+
+}
 void mcpre::part1() {
   // init block attributes
   int FSize = Func->size();
