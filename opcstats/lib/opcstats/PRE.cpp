@@ -84,6 +84,7 @@ namespace {
     virtual bool runOnFunction(Function &F);
     void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<ProfileInfo>();
+      AU.addRequired<DominatorTree>();
     }
     
     bool ProcessExpression(Instruction *Expr);
@@ -95,6 +96,7 @@ namespace {
     char checkBBType(BasicBlock *B, Instruction *Expr);
     bool checkModification(BasicBlock *B, Instruction *Expr);
     bool checkComputation(Instruction *I, Instruction *Expr);
+    bool checkModifyOprand(Instruction *I, Instruction *Expr);
   };
 }
 
@@ -139,18 +141,63 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
 
 // recursively checking through the dom tree
 void mcpre::splitOnModiOrComp(DomTreeNode *N) {
-  Function &F = *Func;
-  
-  int split_flag;
+  map<BasicBlock *, int> edge_to_child;
+  assert(N != 0 && "Null dominator tree node?");
+  BasicBlock *BB = N->getBlock();
+  errs() << "Basic block (name=" << BB->getName() << ") has "
+             << BB->size() << " instructions.\n";
+  int split_flag = -1;
   // filter target expressions
-  for (Function::iterator b = F.begin(); b != F.end(); b++) {
-    split_flag = -1;
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+  for (BasicBlock::iterator i = BB->begin(); i != BB->end(); i++) {
+    // use break after split to jump!
+    int new_flag;
+    if (checkComputation(i, current_exp)) {
+      new_flag = 1;
+    } else if (checkModifyOprand(i, current_exp)) {
+      new_flag = 2;
+    } else {
+      continue;
+    }
+    
+    if (split_flag == -1) {
+      split_flag = new_flag;
+      continue;
+    }
+
+    // both modi and comp, split
+    if (split_flag != new_flag) {
+      // store child edge weight
+      const std::vector<DomTreeNode*> &Children = N->getChildren();
+      for (unsigned i = 0, e = Children.size(); i != e; ++i) {
+        BasicBlock *child = Children[i]->getBlock();
+        ProfileInfo::Edge E = PI->getEdge(BB, child);
+        edge_to_child[child] = PI->getEdgeWeight(E);
+      }
       
+      // split
+      BasicBlock *RestBB = SplitBlock(BB, i, this);
+      
+      // set edge to rest block
+      ProfileInfo::Edge E = PI->getEdge(BB, RestBB);
+      PI->setEdgeWeight(E, PI->getExecutionCount(BB));
+      
+      // restore child edge
+      BB = RestBB;
+      N = N->getChildren()[0];
+      for (unsigned i = 0, e = Children.size(); i != e; ++i) {
+        BasicBlock *child = Children[i]->getBlock();
+        ProfileInfo::Edge E = PI->getEdge(BB, child);
+        PI->setEdgeWeight(E, edge_to_child[child]);
+      }
+      break;
     }
   }
-
+  
+  const std::vector<DomTreeNode*> &Children = N->getChildren();
+  for (unsigned i = 0, e = Children.size(); i != e; ++i)
+    splitOnModiOrComp(Children[i]);
 }
+
 void mcpre::part1() {
   // init block attributes
   int FSize = Func->size();
@@ -200,7 +247,16 @@ bool mcpre::checkModification(BasicBlock *B, Instruction *Expr) {
   }
   return false;
 }
-        
+     
+bool mcpre::checkModifyOprand(Instruction *I, Instruction *Expr) {
+  for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
+    if (Instruction *oprand = dyn_cast<Instruction>(Expr->getOperand(i))) {
+      if (oprand == I)
+        return true;
+    }
+  }
+  return false;
+}
         
 char mcpre::ID = 0;
 static RegisterPass<mcpre> X("mcpre", "min-cut pre", false, false);
