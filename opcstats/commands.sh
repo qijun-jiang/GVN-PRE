@@ -2,6 +2,8 @@ export PATH=${PATH}:/opt/llvm/Release+Asserts/bin
 
 fname=$1
 
+rm llvmprof.out
+
 ## Get the simple profile data
 echo "[Get the simple profile data:]"
 clang -emit-llvm -o $fname.bc -c $fname.c
@@ -13,7 +15,7 @@ g++ -o $fname.profile $fname.profile.ls.s /opt/llvm/Release+Asserts/lib/libprofi
 
 ## Run your pass
 echo "[Run your pass:]"
-opt -basicaa -load /home/qijun/GVN-PRE/opcstats/Release+Asserts/lib/opcstats.so -profile-loader -profile-info-file=llvmprof.out -mcpre -mem2reg < $fname.ls.bc > $fname.slicm.bc
+opt -basicaa -load Release+Asserts/lib/opcstats.so -profile-loader -profile-info-file=llvmprof.out -mcpre -mem2reg < $fname.ls.bc > $fname.slicm.bc
 
 ## Compare original and modified IRllvm-dis $fname.ls.bc
 llvm-dis $fname.slicm.bc
