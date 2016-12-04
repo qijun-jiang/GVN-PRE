@@ -87,7 +87,7 @@ namespace {
     }
     
     bool ProcessExpression(Instruction *Expr);
-    void splitOnModiOrComp();
+    void splitOnModiOrComp(DomTreeNode *N);
     void part1();
     void part2();
     void part3();
@@ -105,16 +105,16 @@ bool mcpre::runOnFunction(Function &F) {
   errs() <<"kaka\n";
   
   // filter target expressions
-   for (Function::iterator b = F.begin(); b != F.end(); b++) {
-        for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-           if (i->getOpcode() == Instruction::Add
-             || i->getOpcode() == Instruction::Mul) {
-             // filter add, multi first
-             // TODO: filter sub, div
-             TargetExpressions.insert(&(*i));
-           }
-        }
-   }
+  for (Function::iterator b = F.begin(); b != F.end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      if (i->getOpcode() == Instruction::Add
+         || i->getOpcode() == Instruction::Mul) {
+         // filter add, multi first
+         // TODO: filter sub, div
+         TargetExpressions.insert(&(*i));
+      }
+    }
+  }
   
   
   
@@ -128,7 +128,8 @@ bool mcpre::runOnFunction(Function &F) {
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
   current_exp = Expr;
-  splitOnModiOrComp();
+  DominatorTree& DT = getAnalysis<DominatorTree>();
+  splitOnModiOrComp(DT.getRootNode());
   part1();
   part2();
   part3();
@@ -136,8 +137,18 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
   return true;
 }
 
-void mcpre::splitOnModiOrComp() {
-
+// recursively checking through the dom tree
+void mcpre::splitOnModiOrComp(DomTreeNode *N) {
+  Function &F = *Func;
+  
+  int split_flag;
+  // filter target expressions
+  for (Function::iterator b = F.begin(); b != F.end(); b++) {
+    split_flag = -1;
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      
+    }
+  }
 
 }
 void mcpre::part1() {
