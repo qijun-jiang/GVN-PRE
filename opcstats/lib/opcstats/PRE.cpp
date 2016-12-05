@@ -46,6 +46,7 @@
 #include <map>
 #include <set>
 #include <limits>
+#include <deque>
 
 using namespace std;
 using namespace llvm;
@@ -63,6 +64,7 @@ namespace {
     // unsigned integers.
     std::vector<BasicBlock*> BlockMapping;
     map<BasicBlock*, unsigned> BlockNumbering;
+    deque<BasicBlock*> split_queue;
 
     // ProcessedExpressions - Keep track of which expressions have already been
     // processed.
@@ -90,7 +92,7 @@ namespace {
     }
     
     bool ProcessExpression(Instruction *Expr);
-    void splitOnModiOrComp(DomTreeNode *N);
+    void splitOnModiOrComp(BasicBlock *N);
     void initClear();
     void part1();
     void part2();
@@ -134,8 +136,12 @@ bool mcpre::runOnFunction(Function &F) {
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
   current_exp = Expr;
-  DominatorTree& DT = getAnalysis<DominatorTree>();
-  splitOnModiOrComp(DT.getRootNode());
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    split_queue.push_back(b);
+  }
+  while (!split_queue.empty()) {
+    splitOnModiOrComp(split_queue.front());
+  }
   initClear();
   part1();
   part2();
@@ -145,10 +151,9 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
 }
 
 // recursively checking through the dom tree
-void mcpre::splitOnModiOrComp(DomTreeNode *N) {
+void mcpre::splitOnModiOrComp(BasicBlock *BB) {
+  split_queue.pop_front();
   map<BasicBlock *, int> edge_to_child;
-  assert(N != 0 && "Null dominator tree node?");
-  BasicBlock *BB = N->getBlock();
   errs() << "Basic block (name=" << BB->getName() << ") has "
              << BB->size() << " instructions.\n";
   int split_flag = -1;
@@ -173,10 +178,8 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
     if (split_flag != new_flag) {
       errs()<<"split:"<< BB->getName() <<" at "<< *I <<'\n';
       // store child edge weight
-      const std::vector<DomTreeNode*> &Children = N->getChildren();
-      errs()<< "has "<< Children.size()<<" children\n";
-      for (unsigned k = 0, e = Children.size(); k != e; ++k) {
-        BasicBlock *child = Children[k]->getBlock();
+      for (succ_iterator SI = succ_begin(BB), Ed = succ_end(BB); SI != Ed; ++SI) {
+        BasicBlock *child = *SI;
         ProfileInfo::Edge E = PI->getEdge(BB, child);
         edge_to_child[child] = PI->getEdgeWeight(E);
         errs()<< E <<":"<< edge_to_child[child]<<'\n';
@@ -185,6 +188,7 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
       
       // split
       BasicBlock *RestBB = SplitBlock(BB, I, this);
+      split_queue.push_front(RestBB);
       
       // set edge to rest block
       ProfileInfo::Edge E = PI->getEdge(BB, RestBB);
@@ -192,10 +196,8 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
       
       // restore child edge
       BB = RestBB;
-      N = N->getChildren()[0];
-      const std::vector<DomTreeNode*> &NewChildren = N->getChildren();
-      for (unsigned k = 0, e = NewChildren.size(); k != e; ++k) {
-        BasicBlock *child = NewChildren[k]->getBlock();
+      for (succ_iterator SI = succ_begin(BB), Ed = succ_end(BB); SI != Ed; ++SI) {
+        BasicBlock *child = *SI;
         ProfileInfo::Edge E = PI->getEdge(BB, child);
         PI->setEdgeWeight(E, edge_to_child[child]);
         errs()<< E <<":"<< edge_to_child[child]<<'\n';
@@ -204,10 +206,6 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
       break;
     }
   }
-  
-  const std::vector<DomTreeNode*> &Children = N->getChildren();
-  for (unsigned i = 0, e = Children.size(); i != e; ++i)
-    splitOnModiOrComp(Children[i]);
 }
 
 void mcpre::initClear() {
