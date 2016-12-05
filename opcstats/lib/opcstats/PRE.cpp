@@ -47,6 +47,7 @@
 #include <set>
 #include <limits>
 #include <deque>
+#include <queue>
 
 using namespace std;
 using namespace llvm;
@@ -54,6 +55,9 @@ using namespace PatternMatch;
 
 namespace {
   const double biasPercentage = 0.8;
+  const int MAX=20010;  
+  const int INF=1<<30;  
+  struct edge{int to,cap,rev;};
   struct mcpre: public FunctionPass {
     static char ID;
     ProfileInfo* PI;
@@ -82,7 +86,59 @@ namespace {
     vector< map<int, double> > reduced_graph;
     
     // min-cut
-    vector< pair<int, int> > cut_edges;    
+    vector< pair<int, int> > cut_edges;
+    
+    vector<edge> G[MAX];  
+    int level[MAX];  
+    int iter[MAX];
+    void add(int from,int to,int cap)  
+    {  
+        int toedge, revedge;
+        toedge = G[to].size();
+        G[from].push_back((edge){to,cap,toedge});
+        revedge = G[from].size()-1;
+        G[to].push_back((edge){from,0,revedge});  
+    }  
+    void bfs(int s)  
+    {  
+        memset(level,-1,sizeof(level)); 
+        queue<int> que;  
+        level[s]=0;  
+        que.push(s);  
+        while(!que.empty())  
+        {  
+            int v=que.front();  
+            que.pop();  
+            for(int i=0;i<G[v].size();i++)  
+            {  
+                edge &e=G[v][i];  
+                if(e.cap>0&& level[e.to]<0)  
+                {  
+                    level[e.to]=level[v]+1;  
+                    que.push(e.to);  
+                }  
+            }  
+        }  
+    }  
+    int dfs(int v,int t,int f)  
+    {  
+        if(v==t) return f;  
+        for(int &i=iter[v];i<G[v].size();i++)  
+        {  
+            edge &e=G[v][i];  
+            if(e.cap>0&&level[v]<level[e.to])  
+            {  
+                int d=dfs(e.to,t,min(f,e.cap));  
+                if(d>0)  
+                {  
+                    e.cap-=d;  
+                    G[e.to][e.rev].cap+=d;  
+                    return d;  
+                }  
+            }  
+        }  
+        return 0;  
+    }  
     
     mcpre() : FunctionPass(ID) { }
     virtual bool runOnFunction(Function &F);
@@ -320,16 +376,41 @@ void mcpre::part2() {
   virtual_sink = n+1;
   
   for (auto id : entryNodes) {
-    reduced_graph[virtual_source][id] = numeric_limits<double>::max();
+    reduced_graph[virtual_source][id] = numeric_limits<int>::max() - 1;
   }
   
   for (auto id : exitNodes) {
-    reduced_graph[id][virtual_sink] = numeric_limits<double>::max();
+    reduced_graph[id][virtual_sink] = numeric_limits<int>::max() - 1;
   }
   
 }
 
-void mcpre::part3() {}
+void mcpre::part3() {
+  for (int i = 0; i <= virtual_sink; i++){
+    G[i].clear();
+  }
+  for (int i = 0; i <= virtual_sink; i++){
+    errs() << "node"<< i << "has" << reduced_graph[i].size() << " edges\n";
+    for (auto it = reduced_graph[i].begin(); it != reduced_graph[i].end(); it++) {
+      int to = (*it).first;
+      int cap = (*it).second;
+      errs() << "edge: "<< i << " to "<< to <<" "<<cap<<"\n";
+      add(i, to, cap);
+    }
+  }
+  int flow=0;  
+  while(1)
+  {  
+    bfs(virtual_source);  
+    errs() << "virtual_sink level = " << level[virtual_sink] << "\n";
+    if(level[virtual_sink]<0) break;  
+    memset(iter,0,sizeof(iter));  
+    int f;  
+    while((f=dfs(virtual_source,virtual_sink,INF))>0)  
+        flow+=f;  
+  }  
+  errs() << "max flow = " << flow << "\n";
+}
 void mcpre::part4() {}
 
 
