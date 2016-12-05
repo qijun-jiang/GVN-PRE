@@ -89,10 +89,14 @@ namespace {
     
     bool ProcessExpression(Instruction *Expr);
     void splitOnModiOrComp(DomTreeNode *N);
+    void initClear();
     void part1();
     void part2();
     void part3();
     void part4();
+    void runForwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT);
+    void runBackwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT, unsigned FSize);
+    bool checkEqual(vector<bool> prev, vector<bool> curr);
     char checkBBType(BasicBlock *B, Instruction *Expr);
     bool checkModification(BasicBlock *B, Instruction *Expr);
     bool checkComputation(Instruction *I, Instruction *Expr);
@@ -132,6 +136,7 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
   current_exp = Expr;
   DominatorTree& DT = getAnalysis<DominatorTree>();
   splitOnModiOrComp(DT.getRootNode());
+  initClear();
   part1();
   part2();
   part3();
@@ -205,28 +210,137 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
     splitOnModiOrComp(Children[i]);
 }
 
+void mcpre::initClear() {
+  // clear block mapping
+  BlockMapping.clear();
+  BlockNumbering.clear
+    
+  // clear block attributes
+  COMP.clear();
+  TRANSP.clear();
+  NAVAL.clear();
+  XAVAL.clear();
+  NPANT.clear();
+  XPANT.clear();
+}
+
 void mcpre::part1() {
+ 
+  // BlockMapping
+  ReversePostOrderTraversal<Function*> RPOT(Func);
+  int count = 0;
+  for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin(); I != RPOT.end(); I++) {
+    BasicBlock *BB = *I;
+    BlockNumbering[BB] = BlockMapping.size();
+    BlockMapping.push_back(BB);
+    errs() << "BlockMapping BB " << count++ << "\n";
+  }
+  
   // init block attributes
   int FSize = Func->size();
+  
+
   COMP.resize(FSize, false);
   TRANSP.resize(FSize, false);
-  NAVAL.resize(FSize, false);
-  XAVAL.resize(FSize, false);
+  NAVAL.resize(FSize, true);
+  XAVAL.resize(FSize, true);
   NPANT.resize(FSize, false);
   XPANT.resize(FSize, false);
+  
+  // update COMP and TRANSP
+  int id = 0;
+  for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin(); I != RPOT.end(); I++, id++) {
+    BasicBlock *BB = *I;
+    switch (checkBBType(BB, current_exp)) {
+      case 'C':
+        COMP[id] = true;
+        break;
+      case 'T':
+        TRANSP[id] = true;
+        break;
+    }
+  }
+  
+  // run forward and backward analysis
+  runForwardAnalysis(RPOT);
+  runBackwardAnalysis(RPOT, FSize);
 }
 void mcpre::part2() {}
 void mcpre::part3() {}
 void mcpre::part4() {}
 
 
+void mcpre::runForwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT) {
+  int loopCount = 0;
+  while (++loopCount) {
+    errs() << "Forward loop " << loopCount << ":\n";
+    
+    vector<bool> prevNAVAL = NAVAL;
+    vector<bool> prevXAVAL = XAVAL;
+    NAVAL[0] = false;
+    XAVAL[0] = false;
+    for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin() + 1; I != RPOT.end(); I++) {
+      BasicBlock *BB = *I;
+      unsigned id = BlockNumbering[BB];
+      for (pred_iterator PI = pred_begin(BB); PI != pred_end(BB); PI++) {
+        NAVAL[id] = NAVAL[id] & XAVAL[BlockNumbering[*PI]];
+      }
+      XAVAL[id] = COMP[id] | (NAVAL[id] & TRANSP[id]);
+    }
+    
+//     for (unsigned i = 0; i < prevNAVAL.size(); i++) {
+//       errs() << i << " prev: "  << prevNAVAL[i] << " " << prevXAVAL[i] << "\n";
+//       errs() << i << " now: "  << NAVAL[i] << " " << XAVAL[i] << "\n";
+//     }
+    
+    if (checkEqual(prevNAVAL, NAVAL) && checkEqual(prevXAVAL, XAVAL)) {
+      errs() << "Forward SUCCESS\n";
+      break;
+    }
+  }
+}
+
+void mcpre::runBackwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT, unsigned FSize) {
+  int loopCount = 0;
+  while (++loopCount) {
+    errs() << "Backward loop " << loopCount << ":\n";
+    
+    vector<bool> prevNPANT = NPANT;
+    vector<bool> prevXPANT = XPANT;
+    XPANT[FSize-1] = false;
+    NPANT[FSize-1] = false;
+    
+    ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.end() - 2;
+    for (int i = FSize-2; i >= 0; I--, i--) {
+      BasicBlock *BB = *I;
+      unsigned id = BlockNumbering[BB];
+      for (succ_iterator PI = succ_begin(BB); PI != succ_end(BB); PI++) {
+        XPANT[id] = XPANT[id] | NPANT[BlockNumbering[*PI]];
+      }
+      NPANT[id] = COMP[id] | (XPANT[id] & TRANSP[id]);
+    }
+    
+    if (checkEqual(prevNPANT, NPANT) && checkEqual(prevXPANT, XPANT)) {
+      errs() << "Backward SUCCESS\n";
+      break;
+    }
+  }
+}
+
+bool mcpre::checkEqual(vector<bool> prev, vector<bool> curr) {
+  for (unsigned i = 0; i < prev.size(); i++) {
+    if (prev[i] != curr[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 char mcpre::checkBBType(BasicBlock *B, Instruction *Expr) {
-  if (checkModification(B, Expr)) return 'M';
-  
+  if (checkModification(B, Expr)) return 'M';  
   for (BasicBlock::iterator i = B->begin(); i != B->end(); i++) {
     if (checkComputation(i, Expr)) return 'C';
   }
-  
   return 'T';
 }
 
