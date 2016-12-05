@@ -398,6 +398,8 @@ void mcpre::part3() {
       add(i, to, cap);
     }
   }
+
+  // run max-flow
   int flow=0;  
   while(1)
   {  
@@ -410,6 +412,22 @@ void mcpre::part3() {
         flow+=f;  
   }  
   errs() << "max flow = " << flow << "\n";
+  
+  // find min cut
+  cut_edges.clear();
+  for (int i = 0; i <= virtual_sink; i++){
+    if (level[i] < 0) {
+      continue;
+    }
+    for (auto it = reduced_graph[i].begin(); it != reduced_graph[i].end(); it++) {
+      int to = (*it).first;
+      int cap = (*it).second;
+      if (level[to] == -1) {
+        cut_edges.push_back(std::make_pair (i, to));
+        errs()<< "cut_edges.add: "<<i<<','<< to<<"\n";
+      }
+    }
+  }
 }
 void mcpre::part4() {}
 
