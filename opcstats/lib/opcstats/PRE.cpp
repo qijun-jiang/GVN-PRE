@@ -270,6 +270,10 @@ void mcpre::part2() {
   int n = BlockMapping.size();
   reduced_graph.resize(n+2);
   
+  for (int i = 0; i < n+2; ++i) {
+    reduced_graph[i].clear();
+  }
+  
   vector<int> indegree;
   vector<int> outdegree;
   indegree.resize(n, 0);
@@ -286,7 +290,11 @@ void mcpre::part2() {
       // if x-aval[u] is true, then edge (u, v) is an insertion-redundant edge
       // if n-pant[v] is false, then edge (u, v) is an insertion-useless edge
       // otherwise, the edge is an essential edge.
-      if (!XAVAL[u] && NPANT[v]) {
+      if (XAVAL[u]) {
+        continue;
+      } else if (!NPANT[v]) {
+        continue;
+      } else {
         ProfileInfo::Edge e = ProfileInfo::getEdge(pred, succ);
         double w = PI->getEdgeWeight(e);
         reduced_graph[u][v] = w;
@@ -320,6 +328,7 @@ void mcpre::part2() {
   for (auto id : exitNodes) {
     reduced_graph[id][virtual_sink] = numeric_limits<double>::max();
   }
+  
 }
 
 void mcpre::part3() {}
