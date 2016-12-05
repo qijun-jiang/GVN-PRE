@@ -40,10 +40,12 @@
 #include "llvm/Transforms/Utils/SSAUpdater.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/CFG.h"
 
 #include <vector>
 #include <map>
 #include <set>
+#include <limits>
 
 using namespace std;
 using namespace llvm;
@@ -121,8 +123,6 @@ bool mcpre::runOnFunction(Function &F) {
       }
     }
   }
-  
-  
   
   // run mc-pre on target expressions
   for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end(); e++){
@@ -213,7 +213,7 @@ void mcpre::splitOnModiOrComp(DomTreeNode *N) {
 void mcpre::initClear() {
   // clear block mapping
   BlockMapping.clear();
-  BlockNumbering.clear
+  BlockNumbering.clear();
     
   // clear block attributes
   COMP.clear();
@@ -233,13 +233,11 @@ void mcpre::part1() {
     BasicBlock *BB = *I;
     BlockNumbering[BB] = BlockMapping.size();
     BlockMapping.push_back(BB);
-    errs() << "BlockMapping BB " << count++ << "\n";
+    errs() << "BlockMapping BB " << count++ << ", " << BB->getName() << "\n";
   }
   
   // init block attributes
   int FSize = Func->size();
-  
-
   COMP.resize(FSize, false);
   TRANSP.resize(FSize, false);
   NAVAL.resize(FSize, true);
@@ -265,7 +263,81 @@ void mcpre::part1() {
   runForwardAnalysis(RPOT);
   runBackwardAnalysis(RPOT, FSize);
 }
-void mcpre::part2() {}
+void mcpre::part2() {
+  // remove nonessential edges and nonessential nodes
+  // and construct a single-source single-sink graph
+  
+  int n = BlockMapping.size();
+  reduced_graph.resize(n+2);
+  
+  vector<int> indegree;
+  vector<int> outdegree;
+  indegree.resize(n, 0);
+  outdegree.resize(n, 0);
+  
+  for (int u = 0; u < n; ++u) {
+    BasicBlock* pred = BlockMapping[u];
+    
+    for (succ_iterator SI = succ_begin(pred), E = succ_end(pred); SI != E; ++SI) {
+      BasicBlock* succ = *SI;
+      int v = BlockNumbering[succ];
+      // ignore nonessential edges by checking partial availablity at the exit of nodes
+      // and partial anticipability at the entry of nodes.
+      // if x-aval[u] is true, then edge (u, v) is an insertion-redundant edge
+      // if n-pant[v] is false, then edge (u, v) is an insertion-useless edge
+      // otherwise, the edge is an essential edge.
+      if (!XAVAL[u] && NPANT[v]) {
+        ProfileInfo::Edge e = ProfileInfo::getEdge(pred, succ);
+        double w = PI->getEdgeWeight(e);
+        reduced_graph[u][v] = w;
+        outdegree[u]++;
+        indegree[v]++;
+      }
+    }
+    
+  }
+  
+  vector<int> entryNodes;
+  vector<int> exitNodes;
+  
+  // group all entry nodes to a virtual source node and 
+  // all the exit nodes to a virtual sink node.
+  for (int i = 0; i < n; ++i) {
+    if (indegree[i] == 0 && outdegree[i] != 0) {
+      entryNodes.push_back(i);
+    } else if (outdegree[i] == 0 && indegree[i] != 0) {
+      exitNodes.push_back(i);
+    }
+  }
+  
+  virtual_source = n;
+  virtual_sink = n+1;
+  
+  for (auto id : entryNodes) {
+    reduced_graph[virtual_source][id] = numeric_limits<double>::max();
+  }
+  
+  for (auto id : exitNodes) {
+    reduced_graph[id][virtual_sink] = numeric_limits<double>::max();
+  }
+  
+  errs() << "-------------------- Original Graph --------------------\n";
+  
+  for (Function::iterator BB = Func->begin(); BB != Func->end(); ++BB) {
+    for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI) {
+      errs() << "(" << BB->getName() << ", " << (*SI)->getName() << ")\t\t\t";
+      errs() << PI->getEdgeWeight(ProfileInfo::getEdge(BB, *SI)) << "\n";
+    }
+  } 
+  
+  errs() << "-------------------- Generated Graph --------------------\n";
+  for (int i = 0; i < n+2; ++i) {
+    for (auto it : reduced_graph[i]) {
+      errs() << "(" << i << ", " << it.first << ")\t\t\t" << it.second << "\n";
+    }
+  }
+}
+
 void mcpre::part3() {}
 void mcpre::part4() {}
 
