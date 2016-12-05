@@ -320,22 +320,6 @@ void mcpre::part2() {
   for (auto id : exitNodes) {
     reduced_graph[id][virtual_sink] = numeric_limits<double>::max();
   }
-  
-  errs() << "-------------------- Original Graph --------------------\n";
-  
-  for (Function::iterator BB = Func->begin(); BB != Func->end(); ++BB) {
-    for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI) {
-      errs() << "(" << BB->getName() << ", " << (*SI)->getName() << ")\t\t\t";
-      errs() << PI->getEdgeWeight(ProfileInfo::getEdge(BB, *SI)) << "\n";
-    }
-  } 
-  
-  errs() << "-------------------- Generated Graph --------------------\n";
-  for (int i = 0; i < n+2; ++i) {
-    for (auto it : reduced_graph[i]) {
-      errs() << "(" << i << ", " << it.first << ")\t\t\t" << it.second << "\n";
-    }
-  }
 }
 
 void mcpre::part3() {}
