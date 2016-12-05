@@ -203,6 +203,7 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
   part2();
   part3();
   part4();
+ 
   return true;
 }
 
@@ -429,7 +430,89 @@ void mcpre::part3() {
     }
   }
 }
-void mcpre::part4() {}
+void mcpre::part4() {
+
+  if (cut_edges.empty())
+     return;
+  
+  AllocaInst *StackVar = new AllocaInst(current_exp->getType(), "stackVar", Func->begin()->getFirstInsertionPt());
+  vector<Instruction* > COMPInsts;
+  Instruction* Expr = current_exp->clone();
+  int remaining_cuts = cut_edges.size();
+
+  for (int i = 0; i < COMP.size(); i++) {
+    if (!COMP[i]) continue;
+    for (auto iter = BlockMapping[i]->begin(); iter != BlockMapping[i]->end(); iter++) 
+      if (checkComputation(iter, current_exp)) {
+        COMPInsts.push_back(iter);
+      }
+  }
+  
+  // replace operand
+  for (int i = 0; i < COMPInsts.size(); i++) {
+    Instruction *I = COMPInsts[i];
+    for (Instruction::use_iterator U = I->use_begin(), E = I->use_end(); U != E; ++U) {
+      if (Instruction *Use = dyn_cast<Instruction>(*U)) {
+        int count = 0;
+        LoadInst *LoadStVar = new LoadInst(StackVar, "LoadStackVar");      
+        for (auto OI = Use->op_begin(), OE = Use->op_end(); OI != OE; ++OI) {
+          Instruction *temp = dyn_cast<Instruction>(OI);
+          if (temp == I) {
+            if (count == 0) {
+              LoadStVar->insertBefore(Use);
+              count = 1;
+            }
+            //*OI = (Value*)(StackVar);
+            Use->replaceUsesOfWith(temp, LoadStVar);
+          }
+        }
+      }
+    }
+    I->eraseFromParent();
+  }
+  
+  for (auto iter = cut_edges.begin(); iter != cut_edges.end(); iter++) {
+    double theWeight = PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second]));
+    
+    errs() << "split the edge: " << iter->first << "->" << iter->second << " with weight " << theWeight << "\n";
+    // split edge
+    BasicBlock *newBB = SplitEdge(BlockMapping[iter->first], BlockMapping[iter->second], this);
+    if (newBB->getSinglePredecessor() == BlockMapping[iter->second])
+      newBB = BlockMapping[iter->second];
+    
+    Instruction *newInst;
+    if (remaining_cuts > 1)
+      newInst = Expr->clone();
+    else
+      newInst = Expr;
+
+    errs() << "insert new Instruction: " << *newInst << "before: " << *(newBB->begin()) << "\n";
+    newInst->insertBefore(newBB->getTerminator());
+    StoreInst *StoreStVar = new StoreInst(newInst, StackVar);
+    StoreStVar->insertBefore(newBB->getTerminator());
+    
+    /*errs() << "********************\n";
+    errs() << *BlockMapping[iter->first] << "\n";
+    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second])) << "\n";
+    errs() << *BlockMapping[iter->second] << "\n";
+    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->second], *succ_begin(BlockMapping[iter->second]))) << "\n";
+    errs() << *(*succ_begin(BlockMapping[iter->second])) << "\n";
+    errs() << "********************\n";*/
+    
+    // set edge weight 
+    PI->setEdgeWeight(PI->getEdge(BlockMapping[iter->first], newBB), theWeight);
+    PI->setEdgeWeight(PI->getEdge(newBB, *succ_begin(newBB)), theWeight);
+    
+    /*errs() << "********************\n";
+    errs() << *BlockMapping[iter->first] << "\n";
+    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second])) << "\n";
+    errs() << *BlockMapping[iter->second] << "\n";
+    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->second], *succ_begin(BlockMapping[iter->second]))) << "\n";
+    errs() << *(*succ_begin(BlockMapping[iter->second])) << "\n";
+    errs() << "********************\n";*/
+  }
+  
+}
 
 
 void mcpre::runForwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT) {
