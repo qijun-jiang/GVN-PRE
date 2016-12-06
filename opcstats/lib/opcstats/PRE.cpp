@@ -109,7 +109,7 @@ namespace {
         {  
             int v=que.front();  
             que.pop();  
-            for(int i=0;i<G[v].size();i++)  
+            for(unsigned i=0;i<G[v].size();i++)  
             {  
                 edge &e=G[v][i];  
                 if(e.cap>0&& level[e.to]<0)  
@@ -422,7 +422,7 @@ void mcpre::part3() {
     }
     for (auto it = reduced_graph[i].begin(); it != reduced_graph[i].end(); it++) {
       int to = (*it).first;
-      int cap = (*it).second;
+      // unsigned cap = (*it).second;
       if (level[to] == -1) {
         cut_edges.push_back(std::make_pair (i, to));
         errs()<< "cut_edges.add: "<<i<<','<< to<<"\n";
@@ -440,7 +440,7 @@ void mcpre::part4() {
   Instruction* Expr = current_exp->clone();
   int remaining_cuts = cut_edges.size();
 
-  for (int i = 0; i < COMP.size(); i++) {
+  for (unsigned i = 0; i < COMP.size(); i++) {
     if (!COMP[i]) continue;
     for (auto iter = BlockMapping[i]->begin(); iter != BlockMapping[i]->end(); iter++) 
       if (checkComputation(iter, current_exp)) {
@@ -449,7 +449,7 @@ void mcpre::part4() {
   }
   
   // replace operand
-  for (int i = 0; i < COMPInsts.size(); i++) {
+  for (unsigned i = 0; i < COMPInsts.size(); i++) {
     Instruction *I = COMPInsts[i];
     for (Instruction::use_iterator U = I->use_begin(), E = I->use_end(); U != E; ++U) {
       if (Instruction *Use = dyn_cast<Instruction>(*U)) {
