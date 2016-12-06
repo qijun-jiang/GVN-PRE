@@ -176,7 +176,7 @@ bool mcpre::runOnFunction(Function &F) {
   errs() <<"kaka\n";
   
   preProcess();
-  
+
   // filter target expressions
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
@@ -198,8 +198,17 @@ bool mcpre::runOnFunction(Function &F) {
           continue;
         }
         
-        errs() << "TargetExpressions: " << *i << "\n";
-        TargetExpressions.insert(&(*i));
+        bool flagCheckExpr = true;
+        for (auto iter = TargetExpressions.begin(); iter != TargetExpressions.end(); iter++) {
+          errs() << "Compare:\n" << *i << "\n" << *(*iter) << "\n";
+          if (checkComputation(i, *iter))
+            flagCheckExpr = false;
+        }
+        
+        if (flagCheckExpr)  {
+          TargetExpressions.insert(&(*i));
+          errs() << "TargetExpressions: " << *i << "\n";
+        }
       }
     }
   }
@@ -209,27 +218,69 @@ bool mcpre::runOnFunction(Function &F) {
     ProcessExpression(*e);
   }
   
-  /*
+  
+  errs() << "================Start of Recover================\n";
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+    errs() << "----\n";
+  }
+  errs() << "<=>\n";
+  
+  bool flag;
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      if (i->getOpcode() == Instruction::Add
-         || i->getOpcode() == Instruction::Mul) {
+      //if (i->getOpcode() == Instruction::Add
+        // || i->getOpcode() == Instruction::Mul) {
+      if (i->getOpcode() != Instruction::Load) {
+        if (i->getOpcode() == Instruction::Store) {
+          if (Instruction *Use = dyn_cast<Instruction>(i->getOperand(0))) {
+            if (AllocInsts.find(Use) == AllocInsts.end())
+              continue;
+            else {
+              LoadInst* Ld = new LoadInst(Use, "ld", i);
+              *(i->op_begin()) = (Value*)Ld;
+              errs() << *Ld << "\n" << "->" << *i << "\n";
+            }
+          }
+          continue;
+        }
+
         for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
           if (Instruction *Use = dyn_cast<Instruction>(OI)) {
             if (AllocInsts.find(Use) == AllocInsts.end())
-              break;
-            count++;
+              continue;
+            else {
+              LoadInst* Ld = new LoadInst(Use, "ld", i);
+              *OI = (Value*)Ld;
+              errs() << *Ld << "\n" << "->" << *i << "\n";
+            }
           }
         }
       }
     }
-  }*/
+  }
+  
+  errs() << "\n";
+  
+  for (auto iter = LoadToBeErased.begin(); iter != LoadToBeErased.end(); iter++) {
+    (*iter)->eraseFromParent();
+  }
+  
+  errs() << "================End of Recover================\n";
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+    errs() << "----\n";
+  }
   
   return true;
 }
   
 void mcpre::preProcess() {
-  errs() << "==========================Start of Pre Process==========================";
+  errs() << "==========================Start of Pre Process==========================\n";
   for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       errs() << *i << "\n";
@@ -240,6 +291,9 @@ void mcpre::preProcess() {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       if (i->getOpcode() == Instruction::Load) {
         Instruction *opI = dyn_cast<Instruction>(i->getOperand(0));
+        if (!opI || opI->getOpcode() != Instruction::Alloca)
+          continue;
+        LoadToBeErased.insert(&(*i));
         AllocInsts.insert(opI);
         errs() << "Load: " << *i << "\n" << "Op:   " << *opI << "\n";
         for (Instruction::use_iterator U = i->use_begin(), E = i->use_end(); U != E; ++U) {
@@ -252,18 +306,17 @@ void mcpre::preProcess() {
             }
           } 
         }
-        LoadToBeErased.insert(i);
       }
     }
   }
   
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+  /*for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       errs() << *i << "\n";
     }
-  }
+  }*/
   
-  errs() << "==========================End of Pre Process==========================";
+  errs() << "==========================End of Pre Process==========================\n";
 }
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
@@ -533,12 +586,27 @@ void mcpre::part4() {
      return;
   }
   
+  /*for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+    errs() << "----\n";
+  }
+  errs() << "========================\n";*/
+  
   AllocaInst *StackVar = new AllocaInst(current_exp->getType(), "stackVar", Func->begin()->getFirstInsertionPt());
+  
+  errs() << "1  " << *current_exp <<"\n";
   vector<Instruction* > COMPInsts;
-  Instruction* Expr = current_exp->clone();
+  unsigned opCode = current_exp->getOpcode();
+  Instruction* op1 = dyn_cast<Instruction>(current_exp->getOperand(0));
+  Instruction* op2 = dyn_cast<Instruction>(current_exp->getOperand(1));  
   int remaining_cuts = cut_edges.size();
   
-  errs() << "part 4 checkpoint1" << "\n";
+  
+  errs() << *op1 << "\n" << *op2 << "\n";
+  if (opCode != Instruction::Add && opCode != Instruction::Mul)
+      return;
 
   for (unsigned i = 0; i < COMP.size(); i++) {
     if (!COMP[i]) continue;
@@ -584,14 +652,21 @@ void mcpre::part4() {
     if (newBB->getSinglePredecessor() == BlockMapping[iter->second])
       newBB = BlockMapping[iter->second];
     
+    LoadInst* LdOp1 = new LoadInst(op1, "ld1", newBB->getTerminator());
+    LoadInst* LdOp2 = new LoadInst(op2, "ld2", newBB->getTerminator());
+    
     Instruction *newInst;
-    if (remaining_cuts > 1)
-      newInst = Expr->clone();
-    else
-      newInst = Expr;
-
-    errs() << "insert new Instruction: " << *newInst << "before: " << *(newBB->begin()) << "\n";
-    newInst->insertBefore(newBB->getTerminator());
+    switch (opCode) {
+      case Instruction::Add:
+        
+      case Instruction::Mul:
+        newInst = BinaryOperator::Create(Instruction::BinaryOps(opCode), (Value*)LdOp1, (Value*)LdOp2, "ni", newBB->getTerminator());
+        errs() << "newInst: " << *newInst << "\n";
+        break;
+      default:
+        return;        
+    }   
+    
     StoreInst *StoreStVar = new StoreInst(newInst, StackVar);
     StoreStVar->insertBefore(newBB->getTerminator());
     
@@ -618,6 +693,8 @@ void mcpre::part4() {
   
   
   errs() << "end of part 4" << "\n";
+  
+  
   
 }
 
