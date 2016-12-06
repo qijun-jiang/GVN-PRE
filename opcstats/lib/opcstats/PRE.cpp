@@ -460,6 +460,24 @@ void mcpre::part2() {
     reduced_graph[id][virtual_sink] = numeric_limits<int>::max() - 1;
   }
   
+//   errs() << "-------------------- Original Graph --------------------\n";
+  
+  
+//   for (Function::iterator BB = Func->begin(); BB != Func->end(); ++BB) {
+//     for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI) {
+//       errs() << BlockNumbering[BB] << ", " << BlockNumbering[*SI] << "\n";
+//       errs() << XAVAL[BlockNumbering[BB]] << ", " << NPANT[BlockNumbering[*SI]] << "\n";
+//       errs() << PI->getEdgeWeight(ProfileInfo::getEdge(BB, *SI)) << "\n";
+//     }
+//   }  
+  
+//   errs() << "-------------------- Generated Graph --------------------\n";
+//   for (int i = 0; i < n+2; ++i) {
+//     for (auto it : reduced_graph[i]) {
+//       errs() << "(" << i << ", " << it.first << ")\t" << it.second << "\n";
+//     }
+//   }
+  
 }
 
 void mcpre::part3() {
@@ -612,7 +630,7 @@ void mcpre::runForwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT) {
     vector<bool> prevNAVAL = NAVAL;
     vector<bool> prevXAVAL = XAVAL;
     NAVAL[0] = false;
-    XAVAL[0] = false;
+    XAVAL[0] = COMP[0];
     for (ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.begin() + 1; I != RPOT.end(); I++) {
       BasicBlock *BB = *I;
       unsigned id = BlockNumbering[BB];
@@ -642,7 +660,7 @@ void mcpre::runBackwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT, unsi
     vector<bool> prevNPANT = NPANT;
     vector<bool> prevXPANT = XPANT;
     XPANT[FSize-1] = false;
-    NPANT[FSize-1] = false;
+    NPANT[FSize-1] = COMP[FSize-1];
     
     ReversePostOrderTraversal<Function*>::rpo_iterator I = RPOT.end() - 2;
     for (int i = FSize-2; i >= 0; I--, i--) {
