@@ -88,6 +88,10 @@ namespace {
     // min-cut
     vector< pair<int, int> > cut_edges;
     
+    // alloca instructions
+    set<Instruction*> AllocInsts;
+    set<Instruction*> LoadToBeErased;
+    
     vector<edge> G[MAX];  
     int level[MAX];  
     int iter[MAX];
@@ -147,6 +151,7 @@ namespace {
       AU.addRequired<DominatorTree>();
     }
     
+    void preProcess();
     bool ProcessExpression(Instruction *Expr);
     void splitOnModiOrComp(BasicBlock *N);
     void initClear();
@@ -170,6 +175,8 @@ bool mcpre::runOnFunction(Function &F) {
   PI = &getAnalysis<ProfileInfo>();
   errs() <<"kaka\n";
   
+  preProcess();
+  
   // filter target expressions
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
@@ -177,7 +184,22 @@ bool mcpre::runOnFunction(Function &F) {
          || i->getOpcode() == Instruction::Mul) {
          // filter add, multi first
          // TODO: filter sub, div
-         TargetExpressions.insert(&(*i));
+        int count = 0;
+        for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
+          if (Instruction *Use = dyn_cast<Instruction>(OI)) {
+            if (AllocInsts.find(Use) == AllocInsts.end())
+              break;
+            count++;
+          }
+        }
+        
+        if (count < i->getNumOperands()) {
+          errs() << "Not Target: " << *i << " with count = " << count << " and getNumOperands = " << i->getNumOperands() << "\n";
+          continue;
+        }
+        
+        errs() << "TargetExpressions: " << *i << "\n";
+        TargetExpressions.insert(&(*i));
       }
     }
   }
@@ -187,7 +209,61 @@ bool mcpre::runOnFunction(Function &F) {
     ProcessExpression(*e);
   }
   
+  /*
+  for (Function::iterator b = F.begin(); b != F.end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      if (i->getOpcode() == Instruction::Add
+         || i->getOpcode() == Instruction::Mul) {
+        for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
+          if (Instruction *Use = dyn_cast<Instruction>(OI)) {
+            if (AllocInsts.find(Use) == AllocInsts.end())
+              break;
+            count++;
+          }
+        }
+      }
+    }
+  }*/
+  
   return true;
+}
+  
+void mcpre::preProcess() {
+  errs() << "==========================Start of Pre Process==========================";
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+  }
+  
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      if (i->getOpcode() == Instruction::Load) {
+        Instruction *opI = dyn_cast<Instruction>(i->getOperand(0));
+        AllocInsts.insert(opI);
+        errs() << "Load: " << *i << "\n" << "Op:   " << *opI << "\n";
+        for (Instruction::use_iterator U = i->use_begin(), E = i->use_end(); U != E; ++U) {
+          if (Instruction *Use = dyn_cast<Instruction>(*U)) {     
+            for (auto OI = Use->op_begin(), OE = Use->op_end(); OI != OE; ++OI) {
+              Instruction *temp = dyn_cast<Instruction>(OI);
+              if (temp == i) {
+                *OI = (Value*)opI;
+              }
+            }
+          } 
+        }
+        LoadToBeErased.insert(i);
+      }
+    }
+  }
+  
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+  }
+  
+  errs() << "==========================End of Pre Process==========================";
 }
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
@@ -431,14 +507,20 @@ void mcpre::part3() {
   }
 }
 void mcpre::part4() {
-
-  if (cut_edges.empty())
+ 
+  errs() << "start of part 4" << "\n";
+  
+  if (cut_edges.empty()) {
+    errs() << "empty cut edges\n";
      return;
+  }
   
   AllocaInst *StackVar = new AllocaInst(current_exp->getType(), "stackVar", Func->begin()->getFirstInsertionPt());
   vector<Instruction* > COMPInsts;
   Instruction* Expr = current_exp->clone();
   int remaining_cuts = cut_edges.size();
+  
+  errs() << "part 4 checkpoint1" << "\n";
 
   for (unsigned i = 0; i < COMP.size(); i++) {
     if (!COMP[i]) continue;
@@ -447,6 +529,8 @@ void mcpre::part4() {
         COMPInsts.push_back(iter);
       }
   }
+ 
+  errs() << "part 4 checkpoint2" << "\n";
   
   // replace operand
   for (unsigned i = 0; i < COMPInsts.size(); i++) {
@@ -470,6 +554,8 @@ void mcpre::part4() {
     }
     I->eraseFromParent();
   }
+  
+  errs() << "part 4 checkpoint3" << "\n";
   
   for (auto iter = cut_edges.begin(); iter != cut_edges.end(); iter++) {
     double theWeight = PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second]));
@@ -511,6 +597,9 @@ void mcpre::part4() {
     errs() << *(*succ_begin(BlockMapping[iter->second])) << "\n";
     errs() << "********************\n";*/
   }
+  
+  
+  errs() << "end of part 4" << "\n";
   
 }
 
@@ -605,21 +694,36 @@ bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
 }
 
 bool mcpre::checkModification(BasicBlock *B, Instruction *Expr) {
-  for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
+  /*for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
     if (Instruction *I = dyn_cast<Instruction>(Expr->getOperand(i))) {
       if (I->getParent() == B)  // Operand is defined in this block!
         return true;
     }
   }
+  return false;*/
+  for (BasicBlock::iterator i = B->begin(); i != B->end(); i++) {
+    if (checkModifyOprand(i, Expr))
+      return true;
+  }
   return false;
 }
      
 bool mcpre::checkModifyOprand(Instruction *I, Instruction *Expr) {
+  if (I->getOpcode() != Instruction::Store)
+    return false;
+  Instruction *opS = dyn_cast<Instruction>(I->getOperand(1));
+  if (!opS)
+    return false;
   for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
     if (Instruction *oprand = dyn_cast<Instruction>(Expr->getOperand(i))) {
-      if (oprand == I)
+      if (opS == oprand) {
         return true;
+      }
     }
+//    if (Instruction *oprand = dyn_cast<Instruction>(Expr->getOperand(i))) {
+//      if (oprand == I)
+//        return true;
+//    }
   }
   return false;
 }
