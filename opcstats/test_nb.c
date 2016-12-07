@@ -1,16 +1,15 @@
 #include "stdio.h"
-#include "time.h"
+#include <sys/resource.h>
+#include <sys/time.h>
 
 int main() {
   
-  clock_t start;
-  double duration;
-
-  start = clock();
+  struct rusage stop, start;
+  getrusage(RUSAGE_SELF, &start);
   long a = 23423234342342, b = 4234234234234234;
   long c;
   long ans = 0;
-  for (int out = 0; out < 300; out++)
+  for (int out = 0; out < 30000; out++)
     for (int i = 0; i < 12; i++) {
       if (i % 3 == 0) {
         if (i%2) 
@@ -66,8 +65,22 @@ int main() {
       ans += c%97;
     }
   
-  duration = ( clock() - start ) / (double) CLOCKS_PER_SEC * 100000;
-  printf("%f\n", duration);
-  printf("%ld\n", ans);
+  getrusage(RUSAGE_SELF, &stop);
+  double start_usec = start.ru_utime.tv_sec * 1000000 + start.ru_utime.tv_usec;
+  double stop_usec = stop.ru_utime.tv_sec * 1000000 + stop.ru_utime.tv_usec;
+  
+  printf("%d\n", (int)(stop_usec - start_usec));
+  // return stop_usec - start_usec;
   return 0;
 }
+
+/* int main() {
+  double ans = 0;
+  for (int i = 0; i < 100; i++) {
+    double t = func();
+    ans += func();
+  }
+  ans /= 100;
+  printf("%f\n", ans);
+  return 0;
+} */
