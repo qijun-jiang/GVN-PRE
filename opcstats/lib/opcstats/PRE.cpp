@@ -92,6 +92,10 @@ namespace {
     set<Instruction*> AllocInsts;
     set<Instruction*> LoadToBeErased;
     
+    // opcode set
+    set<unsigned> Opcodes;
+    set<unsigned> OpNotSwap;
+    
     vector<edge> G[MAX];  
     int level[MAX];  
     int iter[MAX];
@@ -175,13 +179,35 @@ bool mcpre::runOnFunction(Function &F) {
   PI = &getAnalysis<ProfileInfo>();
   errs() <<"kaka\n";
   
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
+      errs() << *i << "\n";
+    }
+  }
+  errs() << "=======\n";
+  
+  Opcodes.clear();
+  OpNotSwap.clear();
+  
+  Opcodes.insert(Instruction::Add);
+  Opcodes.insert(Instruction::Mul);
+  Opcodes.insert(Instruction::Sub);
+  Opcodes.insert(Instruction::FAdd);
+  Opcodes.insert(Instruction::FSub);
+  Opcodes.insert(Instruction::FMul);
+  Opcodes.insert(Instruction::FDiv);
+  
+  OpNotSwap.insert(Instruction::Sub);
+  OpNotSwap.insert(Instruction::FSub);
+  OpNotSwap.insert(Instruction::FDiv);
+  
   preProcess();
 
   // filter target expressions
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      if (i->getOpcode() == Instruction::Add
-         || i->getOpcode() == Instruction::Mul) {
+      if (Opcodes.find(i->getOpcode()) != Opcodes.end()) {
+        errs() << "find opcode: " << i->getOpcode() << "\n";
          // filter add, multi first
          // TODO: filter sub, div
         int count = 0;
@@ -210,6 +236,9 @@ bool mcpre::runOnFunction(Function &F) {
           errs() << "TargetExpressions: " << *i << "\n";
         }
       }
+      else {
+        errs() << "not found opcode: " << i->getOpcode() << "\n";
+      }
     }
   }
   
@@ -231,8 +260,6 @@ bool mcpre::runOnFunction(Function &F) {
   bool flag;
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      //if (i->getOpcode() == Instruction::Add
-        // || i->getOpcode() == Instruction::Mul) {
       if (i->getOpcode() != Instruction::Load) {
         if (i->getOpcode() == Instruction::Store) {
           if (Instruction *Use = dyn_cast<Instruction>(i->getOperand(0))) {
@@ -605,7 +632,7 @@ void mcpre::part4() {
   
   
   errs() << *op1 << "\n" << *op2 << "\n";
-  if (opCode != Instruction::Add && opCode != Instruction::Mul)
+  if (Opcodes.find(opCode) == Opcodes.end())
       return;
 
   for (unsigned i = 0; i < COMP.size(); i++) {
@@ -656,7 +683,13 @@ void mcpre::part4() {
     LoadInst* LdOp2 = new LoadInst(op2, "ld2", newBB->getTerminator());
     
     Instruction *newInst;
-    switch (opCode) {
+    
+    if (Opcodes.find(opCode) != Opcodes.end()) {
+      newInst = BinaryOperator::Create(Instruction::BinaryOps(opCode), (Value*)LdOp1, (Value*)LdOp2, "ni", newBB->getTerminator());
+      errs() << "newInst: " << *newInst << "\n";
+    }
+    else return;
+    /*switch (opCode) {
       case Instruction::Add:
         
       case Instruction::Mul:
@@ -665,7 +698,7 @@ void mcpre::part4() {
         break;
       default:
         return;        
-    }   
+    }   */
     
     StoreInst *StoreStVar = new StoreInst(newInst, StackVar);
     StoreStVar->insertBefore(newBB->getTerminator());
@@ -782,9 +815,13 @@ bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
   Instruction *op1 = dyn_cast<Instruction>(I->getOperand(0));
   Instruction *op2 = dyn_cast<Instruction>(I->getOperand(1));
   
-  if (ExprOp1 == op1 && ExprOp2 == op2) return true;
-  if (ExprOp1 == op2 && ExprOp2 == op1) return true;
-  
+  if (OpNotSwap.count(I->getOpcode())) {
+    if (ExprOp1 == op1 && ExprOp2 == op2) return true;
+  }
+  else {
+    if (ExprOp1 == op1 && ExprOp2 == op2) return true;
+    if (ExprOp1 == op2 && ExprOp2 == op1) return true;
+  }
   return false; 
 }
 
