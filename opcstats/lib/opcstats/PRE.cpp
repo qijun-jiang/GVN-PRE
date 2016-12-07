@@ -203,6 +203,9 @@ bool mcpre::runOnFunction(Function &F) {
   
   preProcess();
 
+  
+  errs() << "TargetExpressions size = " << TargetExpressions.size() << "\n";
+  
   // filter target expressions
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
@@ -242,9 +245,14 @@ bool mcpre::runOnFunction(Function &F) {
     }
   }
   
+  errs() << "TargetExpressions size = " << TargetExpressions.size() << "\n";
+  
   // run mc-pre on target expressions
-  for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end(); e++){
-    ProcessExpression(*e);
+  for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end();){
+    auto theExp = e;
+    e++;
+    errs() << "=>TargetExp: " << *(*theExp) << "\n";
+    ProcessExpression(*theExp);
   }
   
   
@@ -340,11 +348,11 @@ void mcpre::preProcess() {
     }
   }
   
-  /*for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
+  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       errs() << *i << "\n";
     }
-  }*/
+  }
   
   errs() << "==========================End of Pre Process==========================\n";
 }
@@ -428,6 +436,7 @@ void mcpre::initClear() {
   // clear block mapping
   BlockMapping.clear();
   BlockNumbering.clear();
+  TargetExpressions.clear();
     
   // clear block attributes
   COMP.clear();
