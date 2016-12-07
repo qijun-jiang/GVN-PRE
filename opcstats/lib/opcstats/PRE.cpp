@@ -260,9 +260,9 @@ bool mcpre::runOnFunction(Function &F) {
   bool flag;
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      if (i->getOpcode() != Instruction::Load 
-          && i->getOpcode() != Instruction::Call) {
-        if (i->getOpcode() == Instruction::Store) {
+      //if (i->getOpcode() != Instruction::Load) {
+      if (Opcodes.find(i->getOpcode()) != Opcodes.end()) {
+        /*if (i->getOpcode() == Instruction::Store) {
           if (Instruction *Use = dyn_cast<Instruction>(i->getOperand(0))) {
             if (AllocInsts.find(Use) == AllocInsts.end())
               continue;
@@ -273,7 +273,7 @@ bool mcpre::runOnFunction(Function &F) {
             }
           }
           continue;
-        }
+        }*/
 
         for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
           if (Instruction *Use = dyn_cast<Instruction>(OI)) {
@@ -292,9 +292,9 @@ bool mcpre::runOnFunction(Function &F) {
   
   errs() << "\n";
   
-  for (auto iter = LoadToBeErased.begin(); iter != LoadToBeErased.end(); iter++) {
-    (*iter)->eraseFromParent();
-  }
+  //for (auto iter = LoadToBeErased.begin(); iter != LoadToBeErased.end(); iter++) {
+    //(*iter)->eraseFromParent();
+  //}
   
   errs() << "================End of Recover================\n";
   for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
@@ -326,6 +326,8 @@ void mcpre::preProcess() {
         errs() << "Load: " << *i << "\n" << "Op:   " << *opI << "\n";
         for (Instruction::use_iterator U = i->use_begin(), E = i->use_end(); U != E; ++U) {
           if (Instruction *Use = dyn_cast<Instruction>(*U)) {     
+            if (Opcodes.find(Use->getOpcode()) == Opcodes.end())
+              continue;
             for (auto OI = Use->op_begin(), OE = Use->op_end(); OI != OE; ++OI) {
               Instruction *temp = dyn_cast<Instruction>(OI);
               if (temp == i) {
