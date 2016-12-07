@@ -260,7 +260,8 @@ bool mcpre::runOnFunction(Function &F) {
   bool flag;
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      if (i->getOpcode() != Instruction::Load) {
+      if (i->getOpcode() != Instruction::Load 
+          && i->getOpcode() != Instruction::Call) {
         if (i->getOpcode() == Instruction::Store) {
           if (Instruction *Use = dyn_cast<Instruction>(i->getOperand(0))) {
             if (AllocInsts.find(Use) == AllocInsts.end())
