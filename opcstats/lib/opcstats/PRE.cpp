@@ -188,6 +188,7 @@ bool mcpre::runOnFunction(Function &F) {
   
   Opcodes.clear();
   OpNotSwap.clear();
+  TargetExpressions.clear();
   
   Opcodes.insert(Instruction::Add);
   Opcodes.insert(Instruction::Mul);
@@ -436,7 +437,6 @@ void mcpre::initClear() {
   // clear block mapping
   BlockMapping.clear();
   BlockNumbering.clear();
-  TargetExpressions.clear();
     
   // clear block attributes
   COMP.clear();
