@@ -3,6 +3,10 @@ export PATH=${PATH}:/opt/llvm/Release+Asserts/bin
 fname=$1
 
 rm llvmprof.out
+rm -rf *bc
+rm -rf *profile*
+rm -rf *ll
+rm -rf *.s
 
 ## Get the simple profile data
 echo "[Get the simple profile data:]"
