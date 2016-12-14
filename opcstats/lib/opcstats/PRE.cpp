@@ -188,6 +188,7 @@ bool mcpre::runOnFunction(Function &F) {
   
   Opcodes.clear();
   OpNotSwap.clear();
+  AllocInsts.clear();
   TargetExpressions.clear();
   
   Opcodes.insert(Instruction::Add);
@@ -289,9 +290,17 @@ bool mcpre::runOnFunction(Function &F) {
             if (AllocInsts.find(Use) == AllocInsts.end())
               continue;
             else {
+              /*errs() << "i = " << *i << "\n";
+              errs() << "Use = " << *Use << "\n";
+              errs() << (AllocInsts.find(Use) == AllocInsts.end()) << "\n";
+              errs() << "!!!: " << *((Value *)Use) << "\n";
+              errs() << "!!!: " << *(((Value *)Use)->getType()) << "\n";
+              errs() << "!!!: " << isa<PointerType>(((Value *)Use)->getType()) << "\n";
+              errs() << "!!!: " << cast<PointerType>(((Value *)Use)->getType()) << "\n";
+              errs() << "!!!: " << cast<PointerType>(((Value *)Use)->getType())->getElementType() << "\n";*/
               LoadInst* Ld = new LoadInst(Use, "ld", i);
               *OI = (Value*)Ld;
-              errs() << *Ld << "\n" << "->" << *i << "\n";
+              errs() << *Ld << "->" << *i << "\n";
             }
           }
         }
@@ -331,6 +340,7 @@ void mcpre::preProcess() {
         if (!opI || opI->getOpcode() != Instruction::Alloca)
           continue;
         LoadToBeErased.insert(&(*i));
+        
         AllocInsts.insert(opI);
         errs() << "Load: " << *i << "\n" << "Op:   " << *opI << "\n";
         for (Instruction::use_iterator U = i->use_begin(), E = i->use_end(); U != E; ++U) {
