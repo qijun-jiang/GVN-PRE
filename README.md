@@ -8,5 +8,9 @@ RUN MC-PRE pass on sample.c :
         ./sample.mcpre for "-mcpre -mem2reg" flag (MC-PRE)
 * Note: commands.sh script can only support .c file
 
+Run performance test
+1. Run mcpre pass for all benchmarks: python performance.py [benchmark_list_file_name] 1
+2. Collect execution time: python performance.py [benchmark_list_file_name] 0
 
-
+Run correctness test
+./correctness.sh
