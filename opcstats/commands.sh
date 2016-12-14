@@ -15,17 +15,15 @@ g++ -o $fname.profile $fname.profile.ls.s /opt/llvm/Release+Asserts/lib/libprofi
 
 ## Run your pass
 echo "[Run your pass:]"
-opt -basicaa -load Release+Asserts/lib/opcstats.so -profile-loader -profile-info-file=llvmprof.out -mcpre -mem2reg < $fname.ls.bc > $fname.slicm.bc
-
-## Compare original and modified IRllvm-dis $fname.ls.bc
-llvm-dis $fname.slicm.bc
+# baseline pass without MC-PRE
+opt -mem2reg -loop-rotate -reassociate -mem2reg -simplifycfg < $fname.ls.bc > $fname.nomc.bc
+# MC-PRE pass
+opt -basicaa -load Release+Asserts/lib/opcstats.so -profile-loader -profile-info-file=llvmprof.out -mcpre -mem2reg < $fname.ls.bc > $fname.mcpre.bc
 
 ## Generate executables and ensure that your modified IR generates correct output
 llc $fname.bc -o $fname.s
 g++ -o $fname $fname.s
-llc $fname.slicm.bc -o $fname.slicm.s
-g++ -o $fname.slicm $fname.slicm.s
-
-## Once you are sure that your pass works then use mem2reg pass to convert some intermediate load stores to register transfers
-##opt -basicaa -load /home/qijun/ldstats/Release+Asserts/lib/ldstats.so -lamp-inst-cnt -lamp-map-loop -lamp-load-profile -profile-loader -profile-info-file=llvmprof.out -slicm -mem2reg < correct1.ls.bc > correct1.slicm.bc
-
+llc $fname.mcpre.bc -o $fname.mcpre.s
+g++ -o $fname.mcpre $fname.mcpre.s
+llc $fname.nomc.bc -o $fname.nomc.s
+g++ -o $fname.nomc $fname.nomc.s

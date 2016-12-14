@@ -1,5 +1,3 @@
-//PRE test gitignore
-//#define DEBUG_TYPE "gvn"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -177,14 +175,6 @@ bool mcpre::runOnFunction(Function &F) {
   // It's a pointer
   Func = &F;
   PI = &getAnalysis<ProfileInfo>();
-  errs() <<"kaka\n";
-  
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-  }
-  errs() << "=======\n";
   
   Opcodes.clear();
   OpNotSwap.clear();
@@ -204,17 +194,11 @@ bool mcpre::runOnFunction(Function &F) {
   OpNotSwap.insert(Instruction::FDiv);
   
   preProcess();
-
-  
-  errs() << "TargetExpressions size = " << TargetExpressions.size() << "\n";
   
   // filter target expressions
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       if (Opcodes.find(i->getOpcode()) != Opcodes.end()) {
-        errs() << "find opcode: " << i->getOpcode() << "\n";
-         // filter add, multi first
-         // TODO: filter sub, div
         int count = 0;
         for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
           if (Instruction *Use = dyn_cast<Instruction>(OI)) {
@@ -231,73 +215,39 @@ bool mcpre::runOnFunction(Function &F) {
         
         bool flagCheckExpr = true;
         for (auto iter = TargetExpressions.begin(); iter != TargetExpressions.end(); iter++) {
-          errs() << "Compare:\n" << *i << "\n" << *(*iter) << "\n";
           if (checkComputation(i, *iter))
             flagCheckExpr = false;
         }
         
         if (flagCheckExpr)  {
           TargetExpressions.insert(&(*i));
-          errs() << "TargetExpressions: " << *i << "\n";
         }
       }
-      else {
+      /*else {
         errs() << "not found opcode: " << i->getOpcode() << "\n";
-      }
+      }*/
     }
   }
-  
-  errs() << "TargetExpressions size = " << TargetExpressions.size() << "\n";
   
   // run mc-pre on target expressions
   for (auto e=TargetExpressions.begin(); e!=TargetExpressions.end();){
     auto theExp = e;
     e++;
-    errs() << "=>TargetExp: " << *(*theExp) << "\n";
     ProcessExpression(*theExp);
   }
   
   
   errs() << "================Start of Recover================\n";
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-    errs() << "----\n";
-  }
-  errs() << "<=>\n";
   
   bool flag;
   for (Function::iterator b = F.begin(); b != F.end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      //if (i->getOpcode() != Instruction::Load) {
       if (Opcodes.find(i->getOpcode()) != Opcodes.end()) {
-        /*if (i->getOpcode() == Instruction::Store) {
-          if (Instruction *Use = dyn_cast<Instruction>(i->getOperand(0))) {
-            if (AllocInsts.find(Use) == AllocInsts.end())
-              continue;
-            else {
-              LoadInst* Ld = new LoadInst(Use, "ld", i);
-              *(i->op_begin()) = (Value*)Ld;
-              errs() << *Ld << "\n" << "->" << *i << "\n";
-            }
-          }
-          continue;
-        }*/
-
         for (auto OI = i->op_begin(), OE = i->op_end(); OI != OE; ++OI) {
           if (Instruction *Use = dyn_cast<Instruction>(OI)) {
             if (AllocInsts.find(Use) == AllocInsts.end())
               continue;
             else {
-              /*errs() << "i = " << *i << "\n";
-              errs() << "Use = " << *Use << "\n";
-              errs() << (AllocInsts.find(Use) == AllocInsts.end()) << "\n";
-              errs() << "!!!: " << *((Value *)Use) << "\n";
-              errs() << "!!!: " << *(((Value *)Use)->getType()) << "\n";
-              errs() << "!!!: " << isa<PointerType>(((Value *)Use)->getType()) << "\n";
-              errs() << "!!!: " << cast<PointerType>(((Value *)Use)->getType()) << "\n";
-              errs() << "!!!: " << cast<PointerType>(((Value *)Use)->getType())->getElementType() << "\n";*/
               LoadInst* Ld = new LoadInst(Use, "ld", i);
               *OI = (Value*)Ld;
               errs() << *Ld << "->" << *i << "\n";
@@ -308,31 +258,15 @@ bool mcpre::runOnFunction(Function &F) {
     }
   }
   
-  errs() << "\n";
-  
-  //for (auto iter = LoadToBeErased.begin(); iter != LoadToBeErased.end(); iter++) {
-    //(*iter)->eraseFromParent();
-  //}
-  
   errs() << "================End of Recover================\n";
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-    errs() << "----\n";
-  }
   
   return true;
 }
   
 void mcpre::preProcess() {
-  errs() << "==========================Start of Pre Process==========================\n";
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-  }
-  
+  errs() << "================Start of Pre Process================\n";
+
+
   for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
     for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
       if (i->getOpcode() == Instruction::Load) {
@@ -359,13 +293,7 @@ void mcpre::preProcess() {
     }
   }
   
-  for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-  }
-  
-  errs() << "==========================End of Pre Process==========================\n";
+  errs() << "================End of Pre Process================\n";
 }
 
 bool mcpre::ProcessExpression(Instruction *Expr) {
@@ -389,8 +317,6 @@ bool mcpre::ProcessExpression(Instruction *Expr) {
 void mcpre::splitOnModiOrComp(BasicBlock *BB) {
   split_queue.pop_front();
   map<BasicBlock *, int> edge_to_child;
-  errs() << "Basic block (name=" << BB->getName() << ") has "
-             << BB->size() << " instructions.\n";
   int split_flag = -1;
   // filter target expressions
   for (BasicBlock::iterator I = BB->begin(); I != BB->end(); I++) {
@@ -419,7 +345,6 @@ void mcpre::splitOnModiOrComp(BasicBlock *BB) {
         edge_to_child[child] = PI->getEdgeWeight(E);
         errs()<< E <<":"<< edge_to_child[child]<<'\n';
       }
-      errs()<<"restore: and has exc count" << (int)PI->getExecutionCount(BB) <<'\n';
       
       // split
       BasicBlock *RestBB = SplitBlock(BB, I, this);
@@ -435,9 +360,7 @@ void mcpre::splitOnModiOrComp(BasicBlock *BB) {
         BasicBlock *child = *SI;
         ProfileInfo::Edge E = PI->getEdge(BB, child);
         PI->setEdgeWeight(E, edge_to_child[child]);
-        errs()<< E <<":"<< edge_to_child[child]<<'\n';
       }
-      errs()<<'\n';
       break;
     }
   }
@@ -466,7 +389,6 @@ void mcpre::part1() {
     BasicBlock *BB = *I;
     BlockNumbering[BB] = BlockMapping.size();
     BlockMapping.push_back(BB);
-    errs() << "BlockMapping BB " << count++ << ", " << BB->getName() << "\n";
   }
   
   // init block attributes
@@ -560,26 +482,7 @@ void mcpre::part2() {
   
   for (auto id : exitNodes) {
     reduced_graph[id][virtual_sink] = numeric_limits<int>::max() - 1;
-  }
-  
-//   errs() << "-------------------- Original Graph --------------------\n";
-  
-  
-//   for (Function::iterator BB = Func->begin(); BB != Func->end(); ++BB) {
-//     for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI) {
-//       errs() << BlockNumbering[BB] << ", " << BlockNumbering[*SI] << "\n";
-//       errs() << XAVAL[BlockNumbering[BB]] << ", " << NPANT[BlockNumbering[*SI]] << "\n";
-//       errs() << PI->getEdgeWeight(ProfileInfo::getEdge(BB, *SI)) << "\n";
-//     }
-//   }  
-  
-//   errs() << "-------------------- Generated Graph --------------------\n";
-//   for (int i = 0; i < n+2; ++i) {
-//     for (auto it : reduced_graph[i]) {
-//       errs() << "(" << i << ", " << it.first << ")\t" << it.second << "\n";
-//     }
-//   }
-  
+  }  
 }
 
 void mcpre::part3() {
@@ -627,21 +530,11 @@ void mcpre::part3() {
   }
 }
 void mcpre::part4() {
- 
-  errs() << "start of part 4" << "\n";
   
   if (cut_edges.empty()) {
     errs() << "empty cut edges\n";
      return;
   }
-  
-  /*for (Function::iterator b = Func->begin(); b != Func->end(); b++) {
-    for (BasicBlock::iterator i = b->begin(); i != b->end(); i++) {
-      errs() << *i << "\n";
-    }
-    errs() << "----\n";
-  }
-  errs() << "========================\n";*/
   
   AllocaInst *StackVar = new AllocaInst(current_exp->getType(), "stackVar", Func->begin()->getFirstInsertionPt());
   
@@ -652,8 +545,6 @@ void mcpre::part4() {
   Instruction* op2 = dyn_cast<Instruction>(current_exp->getOperand(1));  
   int remaining_cuts = cut_edges.size();
   
-  
-  errs() << *op1 << "\n" << *op2 << "\n";
   if (Opcodes.find(opCode) == Opcodes.end())
       return;
 
@@ -664,8 +555,6 @@ void mcpre::part4() {
         COMPInsts.push_back(iter);
       }
   }
- 
-  errs() << "part 4 checkpoint2" << "\n";
   
   // replace operand
   for (unsigned i = 0; i < COMPInsts.size(); i++) {
@@ -681,7 +570,6 @@ void mcpre::part4() {
               LoadStVar->insertBefore(Use);
               count = 1;
             }
-            //*OI = (Value*)(StackVar);
             Use->replaceUsesOfWith(temp, LoadStVar);
           }
         }
@@ -690,12 +578,9 @@ void mcpre::part4() {
     I->eraseFromParent();
   }
   
-  errs() << "part 4 checkpoint3" << "\n";
-  
   for (auto iter = cut_edges.begin(); iter != cut_edges.end(); iter++) {
     double theWeight = PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second]));
     
-    errs() << "split the edge: " << iter->first << "->" << iter->second << " with weight " << theWeight << "\n";
     // split edge
     BasicBlock *newBB = SplitEdge(BlockMapping[iter->first], BlockMapping[iter->second], this);
     if (newBB->getSinglePredecessor() == BlockMapping[iter->second])
@@ -708,49 +593,16 @@ void mcpre::part4() {
     
     if (Opcodes.find(opCode) != Opcodes.end()) {
       newInst = BinaryOperator::Create(Instruction::BinaryOps(opCode), (Value*)LdOp1, (Value*)LdOp2, "ni", newBB->getTerminator());
-      errs() << "newInst: " << *newInst << "\n";
     }
     else return;
-    /*switch (opCode) {
-      case Instruction::Add:
-        
-      case Instruction::Mul:
-        newInst = BinaryOperator::Create(Instruction::BinaryOps(opCode), (Value*)LdOp1, (Value*)LdOp2, "ni", newBB->getTerminator());
-        errs() << "newInst: " << *newInst << "\n";
-        break;
-      default:
-        return;        
-    }   */
     
     StoreInst *StoreStVar = new StoreInst(newInst, StackVar);
     StoreStVar->insertBefore(newBB->getTerminator());
     
-    /*errs() << "********************\n";
-    errs() << *BlockMapping[iter->first] << "\n";
-    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second])) << "\n";
-    errs() << *BlockMapping[iter->second] << "\n";
-    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->second], *succ_begin(BlockMapping[iter->second]))) << "\n";
-    errs() << *(*succ_begin(BlockMapping[iter->second])) << "\n";
-    errs() << "********************\n";*/
-    
     // set edge weight 
     PI->setEdgeWeight(PI->getEdge(BlockMapping[iter->first], newBB), theWeight);
     PI->setEdgeWeight(PI->getEdge(newBB, *succ_begin(newBB)), theWeight);
-    
-    /*errs() << "********************\n";
-    errs() << *BlockMapping[iter->first] << "\n";
-    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->first], BlockMapping[iter->second])) << "\n";
-    errs() << *BlockMapping[iter->second] << "\n";
-    errs() << "Weight = " << PI->getEdgeWeight(PI->getEdge(BlockMapping[iter->second], *succ_begin(BlockMapping[iter->second]))) << "\n";
-    errs() << *(*succ_begin(BlockMapping[iter->second])) << "\n";
-    errs() << "********************\n";*/
   }
-  
-  
-  errs() << "end of part 4" << "\n";
-  
-  
-  
 }
 
 
@@ -771,12 +623,7 @@ void mcpre::runForwardAnalysis(ReversePostOrderTraversal<Function*> &RPOT) {
       }
       XAVAL[id] = COMP[id] | (NAVAL[id] & TRANSP[id]);
     }
-    
-//     for (unsigned i = 0; i < prevNAVAL.size(); i++) {
-//       errs() << i << " prev: "  << prevNAVAL[i] << " " << prevXAVAL[i] << "\n";
-//       errs() << i << " now: "  << NAVAL[i] << " " << XAVAL[i] << "\n";
-//     }
-    
+   
     if (checkEqual(prevNAVAL, NAVAL) && checkEqual(prevXAVAL, XAVAL)) {
       errs() << "Forward SUCCESS\n";
       break;
@@ -848,13 +695,6 @@ bool mcpre::checkComputation(Instruction *I, Instruction *Expr) {
 }
 
 bool mcpre::checkModification(BasicBlock *B, Instruction *Expr) {
-  /*for (unsigned i = 0; i != Expr->getNumOperands(); i++) {
-    if (Instruction *I = dyn_cast<Instruction>(Expr->getOperand(i))) {
-      if (I->getParent() == B)  // Operand is defined in this block!
-        return true;
-    }
-  }
-  return false;*/
   for (BasicBlock::iterator i = B->begin(); i != B->end(); i++) {
     if (checkModifyOprand(i, Expr))
       return true;
@@ -874,10 +714,6 @@ bool mcpre::checkModifyOprand(Instruction *I, Instruction *Expr) {
         return true;
       }
     }
-//    if (Instruction *oprand = dyn_cast<Instruction>(Expr->getOperand(i))) {
-//      if (oprand == I)
-//        return true;
-//    }
   }
   return false;
 }
