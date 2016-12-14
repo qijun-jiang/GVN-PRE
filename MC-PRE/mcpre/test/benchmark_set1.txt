@@ -1,0 +1,7 @@
+Bubblesort
+fldry
+n-body
+nsieve-bits
+Puzzle
+Quicksort
+Treesort
